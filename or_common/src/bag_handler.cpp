@@ -172,12 +172,12 @@ void BagHandler::loadBagsFromDir()
 
 std::string BagHandler::getCorrespondingClassName() const
 {
-  using namespace boost::filesystem;
-  path meta_file = boost::filesystem::change_extension(path(bag.getFileName()),path(".yml"));
+  using boost::filesystem::path;
+  path meta_file = change_extension(path(bag.getFileName()),path(".yaml"));
   std::string class_name = "no_class_defined";
   if(!exists(meta_file))
   {
-    std::cout<<meta_file.string()<<"\n";
+    ROS_INFO("%s",meta_file.c_str());
     ROS_INFO("No metafile corresponding to bag found, using class no_class_defined");
   }
   else
@@ -188,6 +188,26 @@ std::string BagHandler::getCorrespondingClassName() const
      fs.release();
   }
   return class_name;
+}
+
+std::string BagHandler::getCorrespondingPipeline() const
+{
+  using boost::filesystem::path;
+  path meta_file = change_extension(path(bag.getFileName()),path(".yaml"));
+  std::string pipeline_name = "hand";
+  if(!exists(meta_file))
+  {
+    ROS_INFO("%s",meta_file.c_str());
+    ROS_INFO("No metafile corresponding to bag found, using hand pipeline");
+  }
+  else
+  {
+    //std::cout<<"metafile: "<<meta_file.string()<<"\n";
+    cv::FileStorage fs(meta_file.string(), cv::FileStorage::READ);
+     fs["Pipeline"]>>pipeline_name;
+     fs.release();
+  }
+  return pipeline_name;
 }
 
 void BagHandler::point_cloud_cb(const sensor_msgs::PointCloud2ConstPtr& msg)

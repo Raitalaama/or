@@ -18,6 +18,7 @@
 
 #include <vector>
 #include <string>
+#include <math.h>
 
 #include <opencv2/opencv.hpp>
 
@@ -25,7 +26,7 @@
 
 
 
-namespace HelperFunctions
+namespace helper_functions
 {
 
 
@@ -37,6 +38,7 @@ cv::Mat pcTocv(Cloud::Ptr &input_cloud);
 
 cv::Mat insertText(cv::Mat image,std::string line1="",std::string line2="",std::string line3="",std::string line4="",std::string line5="",std::string line6="");
 
+pcl::PointIndices::Ptr getFiniteIndices(Cloud::ConstPtr input_cloud);
 
 
 cv::Mat pcToDistcv(Cloud::Ptr &input_cloud);
@@ -44,10 +46,10 @@ cv::Mat pcToDistcv(Cloud::Ptr &input_cloud);
 
 cv::Mat highlightPoints(cv::Mat base_image, boost::shared_ptr<std::vector<int> > points);
 
-int getIntSetting(std::string setting_name);
-float getFloatSetting(std::string setting_name);
-std::string getStringSetting(std::string setting_name);
+std::vector<int> getIntSettings(std::string setting_name);
+std::vector<float> getFloatSettings(std::string setting_name);
 
+std::string getStringSetting(std::string setting_name);
 std::vector<std::string> getStringVectorSetting(std::string setting_name);
 
 

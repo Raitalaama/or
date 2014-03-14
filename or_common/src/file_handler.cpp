@@ -7,11 +7,6 @@
 
 #include "or_common/file_handler.h"
 
-using namespace std;
-using namespace pcl;
-
-using namespace boost::filesystem;
-
 FileHandler::FileHandler()
 {
   // TODO Auto-generated constructor stub
@@ -31,6 +26,13 @@ void FileHandler::setLoopInput(bool loop_files)
   loop_input_files = loop_files;
 }
 
+
+void FileHandler::saveImage(const cv::Mat image, std::string filename)
+{
+  setFilenameBody(filename);
+  saveImage(image);
+}
+
 void FileHandler::saveImage(const cv::Mat image)
 {
   //TODO Crashes if input is empty point cloud
@@ -39,7 +41,7 @@ void FileHandler::saveImage(const cv::Mat image)
   {
     cv::imwrite(getCompleteOutputFilename(), image, compression_params);
   }
-  catch (runtime_error& ex)
+  catch (std::runtime_error& ex)
   {
     fprintf(stderr, "Exception saving image to PNG format: %s\n", ex.what());
   }
@@ -50,21 +52,21 @@ void FileHandler::savePointCloud(Cloud::ConstPtr cloud)
   //TODO Crashes if input is empty point cloud
   //(output_pcd_directory.string())
 
-  io::savePCDFileASCII(getCompleteOutputFilename(), *cloud);
+  pcl::io::savePCDFileASCII(getCompleteOutputFilename(), *cloud);
 }
 
-void FileHandler::savePointCloud(Cloud::ConstPtr cloud, const PointIndices::ConstPtr &indices)
+void FileHandler::savePointCloud(Cloud::ConstPtr cloud, const pcl::PointIndices::ConstPtr &indices)
 {
   Cloud::Ptr temp;
   temp.reset(new Cloud);
-  temp = HelperFunctions::filterIndices(cloud, indices, true);
+  temp = helper_functions::filterIndices(cloud, indices, true);
   savePointCloud(temp);
 }
 
-void FileHandler::savePointCloud(Cloud::ConstPtr cloud, std::vector<PointIndices> &indice_vector)
+void FileHandler::savePointCloud(Cloud::ConstPtr cloud, std::vector<pcl::PointIndices> &indice_vector)
 {
-  for (vector<PointIndices>::iterator it = indice_vector.begin(); it != indice_vector.end(); ++it)
-    savePointCloud(cloud, boost::make_shared<const PointIndices>(*it));
+  for (std::vector<pcl::PointIndices>::iterator it = indice_vector.begin(); it != indice_vector.end(); ++it)
+    savePointCloud(cloud, boost::make_shared<const pcl::PointIndices>(*it));
   //TODO save all from this function call with 1 particular prefix
 }
 
@@ -80,7 +82,7 @@ Cloud::Ptr FileHandler::getNextPointCloud()
     files_iterator_ = files_.begin();
   if (files_iterator_ != files_.end())
   {
-    if (io::loadPCDFile((*files_iterator_).string(), cloud_blob) == -1) //* load the file
+    if (pcl::io::loadPCDFile((*files_iterator_).string(), cloud_blob) == -1) //* load the file
     {
       //printf ("Couldn't read file %s \n",pcd_iterator->string());
     }
@@ -204,7 +206,7 @@ void FileHandler::loadTrainingDataDir(std::vector<cv::Mat>* features, std::vecto
 
     while (nr_of_vectors < feature_classes.rows)
     {
-      int class_count = count(classes_begin, classes_end, class_iter);
+      int class_count = std::count(classes_begin, classes_end, class_iter);
       if (class_count > 0)
       {
         nr_of_vectors += class_count;
@@ -304,7 +306,7 @@ void FileHandler::loadTrainingData(cv::Mat features, cv::Mat classes)
     ROS_INFO("invalid filename extension, trying yml (accepted extensions: yml,yaml,xml");
     extension = "yml";
   }
-  if (!exists(path(getCompleteInputFilename())))
+  if (!boost::filesystem::exists(boost::filesystem::path(getCompleteInputFilename())))
   {
     ROS_INFO("File specified could not be found");
     return;

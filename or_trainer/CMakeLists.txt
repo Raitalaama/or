@@ -9,6 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_ros
   roscpp
   sensor_msgs
+  or_common
 )
 
 ## System dependencies are found with CMake's conventions
@@ -82,8 +83,8 @@ find_package(OpenCV)
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-#  INCLUDE_DIRS include
-#  LIBRARIES or_trainer
+  INCLUDE_DIRS include
+#  LIBRARIES or_common
 #  CATKIN_DEPENDS pcl_conversions pcl_ros roscpp sensor_msgs
 #  DEPENDS system_lib
 )
@@ -96,7 +97,7 @@ catkin_package(
 ## Your package locations should be listed before other locations
 # include_directories(include)
 include_directories(
-  #or_common
+  include
   ${OpenCV_INCLUDE_DIRS}
   ${catkin_INCLUDE_DIRS}
 )
@@ -107,7 +108,7 @@ include_directories(
 # )
 
 ## Declare a cpp executable
-add_executable(or_trainer src/trainer_main.cpp)
+add_executable(or_trainer src/trainer_main.cpp src/or_trainer.cpp src/segmenter.cpp)
 
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
@@ -116,7 +117,6 @@ add_executable(or_trainer src/trainer_main.cpp)
 ## Specify libraries to link a library or executable target against
 target_link_libraries(or_trainer ${OpenCV_LIBRARIES})
 target_link_libraries(or_trainer
-  or_common
   ${catkin_LIBRARIES}
 )
 

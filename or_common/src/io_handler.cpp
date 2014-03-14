@@ -7,8 +7,11 @@
 
 #include "or_common/io_handler.h"
 
-using namespace boost::filesystem;
-using namespace std;
+using boost::filesystem::path;
+using boost::filesystem::directory_iterator;
+using std::string;
+using std::stringstream;
+
 
 void IOHandler::setInputDirectory(string input_directory)
 {

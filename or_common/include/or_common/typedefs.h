@@ -9,20 +9,21 @@
 #define TYPEDEFS_H_
 
 #include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 #include <vector>
 
-typedef pcl::PointXYZRGB PointType;
-typedef pcl::PointCloud<PointType> Cloud;
+typedef pcl::PointXYZRGB PointRGB;
+typedef pcl::PointCloud<PointRGB> Cloud;
 //typedef Cloud::Ptr CloudPtr;
 //typedef Cloud::ConstPtr CloudConstPtr;
 
-typedef pcl::Normal PointNormalType;
-typedef pcl::PointCloud<PointNormalType> CloudN;
+typedef pcl::Normal PointN;
+typedef pcl::PointCloud<PointN> CloudN;
 //typedef CloudN::Ptr CloudNPtr;
 //typedef CloudN::ConstPtr CloudNPConstPtr;
 
 typedef pcl::PointXYZRGBNormal PointRGBN;
-typedef pcl::PointCloud<PointXYZRGBN> CloudRGBN;
+typedef pcl::PointCloud<PointRGBN> CloudRGBN;
 //typedef CloudXYZRGBN::Ptr CloudXYZRGBNPtr;
 //typedef CloudXYZRGBN::ConstPtr CloudXYZRGBNConstPtr;
 

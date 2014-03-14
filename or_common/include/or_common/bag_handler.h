@@ -43,6 +43,8 @@ public:
   Cloud::Ptr getNextPointCloud();
 
   std::string getCorrespondingClassName() const;
+  std::string getCorrespondingPipeline() const;
+
 
 
 private:
