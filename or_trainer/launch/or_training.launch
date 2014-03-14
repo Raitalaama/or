@@ -1,0 +1,7 @@
+<launch>
+  <master auto="start"/>
+  <node pkg="or_trainer" type="or_trainer" respawn="false" name="or_trainer" output="screen">
+    <rosparam file="$(find or_trainer)/or_trainer.yaml" command="load" />
+  </node>
+  <include file="$(find or_trainer)/launch/openni_record_player.launch"/>
+</launch>
