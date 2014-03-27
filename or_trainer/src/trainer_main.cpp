@@ -6,7 +6,7 @@
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "Training objects");
+  ros::init(argc, argv, "Training_objects");
   ros::NodeHandle nh("or_trainer");
 
   or_training::ORTrainer or_training;

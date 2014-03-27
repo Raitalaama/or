@@ -11,7 +11,10 @@
 #include <ros/ros.h>
 #include "or_common/typedefs.h"
 #include "or_common/bag_handler.h"
+#include "or_common/feature_extract.h"
+
 #include "or_trainer/segmenter.h"
+
 
 namespace or_training
 {
@@ -36,7 +39,7 @@ private:
 
 
 
-  std::vector<Cloud::Ptr> output_clouds_;
+  std::vector<pcl::PointIndices::Ptr> point_indices_;
 
   Cloud::Ptr input_cloud_;
 

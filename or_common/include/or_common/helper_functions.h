@@ -30,11 +30,17 @@ namespace helper_functions
 {
 
 
-Cloud::Ptr filterIndices(const Cloud::ConstPtr &input_cloud, const pcl::PointIndices::ConstPtr &indices, bool negative=false);
+//Cloud::Ptr filterIndices(const Cloud::ConstPtr &input_cloud, const pcl::PointIndices::ConstPtr &indices, bool negative=false);
 
 pcl::PointIndices::Ptr combineIndices(std::vector<pcl::PointIndices> &indice_vector);
 cv::Mat pcTocv(Cloud::Ptr &input_cloud, std::string window_name);
 cv::Mat pcTocv(Cloud::Ptr &input_cloud);
+cv::Mat pcTocv(Cloud::Ptr &input_cloud, pcl::PointIndices::Ptr indices);
+cv::Mat pcTocv(Cloud::Ptr &input_cloud, IndicesPtr indices);
+cv::Mat pcTocv(Cloud::Ptr &input_cloud, std::vector<int> indices);
+
+
+
 
 cv::Mat insertText(cv::Mat image,std::string line1="",std::string line2="",std::string line3="",std::string line4="",std::string line5="",std::string line6="");
 

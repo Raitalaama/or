@@ -49,13 +49,25 @@ void ORTrainer::processPointCloud()
 {
   ROS_INFO("prosessointi alko!!");
 
-  Segmenter segmenting;
+  Segmenter segmenting(nh_.getNamespace());
   segmenting.setInputCloud(input_cloud_);
   segmenting.setInputClass(bag_handler_.getCorrespondingClassName());
   //segmenting.setInputPipeline(bag_handler_.getCorrespondingPipeline());
   segmenting.setInputPipeline("hand"); //TODO use previous line
   segmenting.segment();
-  output_clouds_ = segmenting.getResultPointCloud();
+  point_indices_ = segmenting.getResultIndices();
+  or_common::FeatureExtract features(nh_.getNamespace());
+  features.setInputCloud(input_cloud_);
+  for(size_t i =0;i<point_indices_.size();++i)
+  {
+    features.setInputIndices(point_indices_[i]);
+    features.computeUniformKeypoints();
+      features.computeFPFHDescriptors();
+      features.getFPFHDescriptorsCV();
+
+  }
+
+
 
   ROS_INFO("prosessointi onnas!!");
 }

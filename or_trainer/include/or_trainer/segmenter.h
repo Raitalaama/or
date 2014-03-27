@@ -7,9 +7,11 @@
 
 #include "or_common/helper_functions.h"
 #include "or_common/file_handler.h"
+#include "or_common/meta_data.h"
 
 #include "or_common/typedefs.h"
 #include <vector>
+#include <algorithm>
 #include <string>
 #include <sstream>
 
@@ -36,6 +38,8 @@
 #ifndef SEGMENTER_H_
 #define SEGMENTER_H_
 
+
+
 namespace or_training
 {
 
@@ -43,18 +47,22 @@ class Segmenter
 {
 public:
   Segmenter();
+  Segmenter(std::string node_namespace);
   virtual ~Segmenter();
 
 
   void segment();
 
   void setInputCloud(Cloud::Ptr input);
+  void setInputIndices(pcl::PointIndices::Ptr input);
+
 
   void setInputClass(std::string input_class);
   void setInputPipeline(std::string input_pipeline);
 
-  std::vector<std::string> getResultMetaData();
-  std::vector<Cloud::Ptr> getResultPointCloud();
+  std::vector<or_common::MetaData> getResultMetaData();
+  std::vector<pcl::PointIndices::Ptr> getResultIndices();
+
 
 
 private:
@@ -66,19 +74,25 @@ private:
   void euclideanClustering();
   void tableTopFiltering();
   bool isSkin(const cv::Mat skin_model,const cv::Vec3b color);
-  void filterSkin(const cv::Mat skin_model, Cloud::Ptr &cloud); //TODO ref?
+  pcl::PointIndices::Ptr filterSkin(const cv::Mat skin_model, pcl::PointIndices::Ptr indices); //TODO ref?
 
-  void saveImage(Cloud::Ptr cloud, std::string meta_info);
+  void saveImage(Cloud::Ptr cloud, or_common::MetaData meta_info);
+  void saveImage(Cloud::Ptr cloud,pcl::PointIndices::Ptr indices, or_common::MetaData meta_info);
+  void saveImage(Cloud::Ptr cloud,pcl::PointIndices::Ptr indices);
+  void saveImage(Cloud::Ptr cloud);
+  void saveImage(Cloud::Ptr cloud, std::vector<int> indices);
 
 
-  Cloud::Ptr input_;
-  std::vector<Cloud::Ptr> output_;
 
-  std::string input_class_;
+
+  Cloud::Ptr input_cloud_;
+  std::vector<pcl::PointIndices::Ptr> indices_;
+
+  std::string input_class_; //TODO really needed as member variable?
   std::string input_pipeline_; //TODO use or remove
 
 
-  std::vector<std::string> meta_output_;
+  std::vector<or_common::MetaData> meta_;
 
   ros::NodeHandle nh_;
   FileHandler fh_;
@@ -90,7 +104,7 @@ private:
   bool perform_euclidean_clustering_;
   bool perform_table_top_filtering_;
 
-  std::vector<std::string> crcb_skin_parameters_;
+  std::vector<or_common::MetaData> crcb_skin_parameters_;
   std::vector<cv::Mat> crcb_skin_model_;
   std::vector<int> erode_dilate_mask_size_;
 

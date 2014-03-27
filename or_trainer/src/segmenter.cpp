@@ -12,11 +12,22 @@ namespace or_training
 using std::vector;
 using helper_functions::getFloatSettings;
 using helper_functions::getIntSettings;
-Segmenter::Segmenter() :
-    nh_("or_trainer/segmenter")
+using or_common::MetaData;
+
+//TODO use only indices instead of copying pc:s around
+
+Segmenter::Segmenter()
 {
   // TODO Auto-generated constructor stub
   loadSettings();
+}
+
+Segmenter::Segmenter(std::string node_namespace) :
+    nh_(node_namespace + "/segmenter")
+{
+  // TODO Auto-generated constructor stub
+  loadSettings();
+
 }
 
 Segmenter::~Segmenter()
@@ -27,17 +38,32 @@ Segmenter::~Segmenter()
 void Segmenter::segment()
 {
   ROS_INFO("Starting to segment point cloud");
-  std::string meta;
-  meta = input_pipeline_ + "_" + input_class_;
-  meta_output_.push_back(meta);
+  if (indices_.size() == 0)
+  {
+    indices_.push_back(helper_functions::getFiniteIndices(input_cloud_));
+  }
+  while (meta_.size() != indices_.size())
+  {
+    if (meta_.size() > indices_.size())
+    {
+      meta_.pop_back();
+    }
+    else
+    {
+      MetaData meta;
+      meta.addMeta("pipeline", input_pipeline_);
+      meta.addMeta("class", input_class_);
+      meta_.push_back(meta);
+    }
 
+  }
   if (perform_initial_pass_through_filtering_)
   {
     initialPassThrough();
   }
   else
   {
-    output_.push_back(input_);
+    //output_.push_back(input_);
   }
 
   if (perform_crcb_skin_filtering_)
@@ -61,7 +87,8 @@ void Segmenter::segment()
 
 void Segmenter::setInputCloud(Cloud::Ptr input)
 {
-  input_ = input;
+  input_cloud_ = input;
+
 }
 
 void Segmenter::setInputClass(std::string input_class)
@@ -74,55 +101,65 @@ void Segmenter::setInputPipeline(std::string input_pipeline)
   input_pipeline_ = input_pipeline;
 }
 
-std::vector<std::string> Segmenter::getResultMetaData()
+std::vector<MetaData> Segmenter::getResultMetaData()
 {
-  return meta_output_;
+  return meta_;
 }
 
-std::vector<Cloud::Ptr> Segmenter::getResultPointCloud()
+std::vector<pcl::PointIndices::Ptr> Segmenter::getResultIndices()
 {
-  return output_;
+  return indices_;
 }
 
+/*
+ std::vector<Cloud::Ptr> Segmenter::getResultPointCloud()
+ {
+ std::vector<Cloud::Ptr> output_clouds;
+ for()
+ return output_;
+ }
+ */
 void Segmenter::initialPassThrough()
 {
   ROS_INFO("initial pass through");
-  std::vector<Cloud::Ptr> tmp_output;
-  std::vector<std::string> tmp_meta_output;
-  Cloud::Ptr processed_cloud;
-  for (size_t i = 0; i < initial_pass_through_x_.size(); ++i)
+  std::vector<pcl::PointIndices::Ptr> indices_tmp;
+  std::vector<MetaData> meta_tmp;
+  for (size_t i = 0; i < indices_.size(); ++i)
   {
+    for (size_t j = 0; j < initial_pass_through_x_.size(); ++j)
+    {
 
-    initial_pass_through_x_[i].setInputCloud(input_);
-    processed_cloud.reset(new Cloud);
-    initial_pass_through_x_[i].filter(*processed_cloud);
-    initial_pass_through_y_[i].setInputCloud(processed_cloud);
-    processed_cloud.reset(new Cloud);
-    initial_pass_through_y_[i].filter(*processed_cloud);
-    initial_pass_through_z_[i].setInputCloud(processed_cloud);
-    processed_cloud.reset(new Cloud);
-    initial_pass_through_z_[i].filter(*processed_cloud);
-    tmp_output.push_back(processed_cloud);
+      MetaData new_meta(meta_[i]);
+      pcl::PointIndices::Ptr remaining_points(new pcl::PointIndices(*indices_[i]));
+      saveImage(input_cloud_, remaining_points);
 
-    //Meta data for screen shot filename etc.
-    float x_min, x_max, y_min, y_max, z_min, z_max;
-    initial_pass_through_x_[i].getFilterLimits(x_min, x_max);
-    initial_pass_through_y_[i].getFilterLimits(y_min, y_max);
-    initial_pass_through_z_[i].getFilterLimits(z_min, z_max);
-    std::ostringstream new_meta;
-    new_meta.precision(3);
-    new_meta << meta_output_[0];
-    new_meta << "_ipt_x_" << x_min << "_" << x_max;
-    new_meta << "_y_" << y_min << "_" << y_max;
-    new_meta << "_z_" << z_min << "_" << z_max;
-    tmp_meta_output.push_back(new_meta.str());
+      initial_pass_through_x_[j].setInputCloud(input_cloud_);
+      initial_pass_through_x_[j].setIndices(remaining_points);
+      initial_pass_through_x_[j].filter(remaining_points->indices);
+      initial_pass_through_y_[j].setInputCloud(input_cloud_);
+      initial_pass_through_y_[j].setIndices(remaining_points);
+      initial_pass_through_y_[j].filter(remaining_points->indices);
+      initial_pass_through_z_[j].setInputCloud(input_cloud_);
+      initial_pass_through_z_[j].setIndices(remaining_points);
+      initial_pass_through_z_[j].filter(remaining_points->indices);
+      indices_tmp.push_back(remaining_points);
+      //Meta data for screen shot filename etc.
 
-    //TODO read parameter to save or not
-    saveImage(processed_cloud, new_meta.str());
+      float x_min, x_max, y_min, y_max, z_min, z_max;
+      initial_pass_through_x_[j].getFilterLimits(x_min, x_max);
+      initial_pass_through_y_[j].getFilterLimits(y_min, y_max);
+      initial_pass_through_z_[j].getFilterLimits(z_min, z_max);
+      new_meta.addMeta("init_x_pass", x_min, x_max);
+      new_meta.addMeta("init_y_pass", y_min, y_max);
+      new_meta.addMeta("init_z_pass", z_min, z_max);
+      meta_tmp.push_back(new_meta);
+
+      //TODO read parameter to save or not
+      saveImage(input_cloud_, remaining_points, new_meta);
+    }
   }
-
-  output_ = tmp_output;
-  meta_output_ = tmp_meta_output;
+  indices_ = indices_tmp;
+  meta_ = meta_tmp;
 }
 
 void Segmenter::finalPassThrough()
@@ -133,33 +170,30 @@ void Segmenter::crCbSkinFiltering()
 {
   ROS_INFO("crcb filtering");
 
-  std::vector<Cloud::Ptr> tmp_output;
-  std::vector<std::string> tmp_meta_output;
-  Cloud::Ptr processed_cloud;
+  std::vector<pcl::PointIndices::Ptr> indices_tmp;
+  std::vector<MetaData> meta_tmp;
 
-  for (size_t i = 0; i < output_.size(); ++i)
+  for (size_t i = 0; i < indices_.size(); ++i)
   {
-
     for (size_t j = 0; j < crcb_skin_model_.size(); ++j)
     {
-      processed_cloud.reset(new Cloud);
-      processed_cloud = output_[i];
-      filterSkin(crcb_skin_model_[j], processed_cloud);
-      tmp_output.push_back(processed_cloud);
+
+      pcl::PointIndices::Ptr remaining_points(new pcl::PointIndices(*indices_[i]));
+      saveImage(input_cloud_, remaining_points);
+
+      remaining_points = filterSkin(crcb_skin_model_[j], remaining_points);
+      indices_tmp.push_back(remaining_points);
 
       //Meta data for screen shot filename etc.
-      std::ostringstream new_meta;
-      new_meta.precision(3);
-      new_meta << meta_output_[i];
-      new_meta << crcb_skin_parameters_[j];
-      tmp_meta_output.push_back(new_meta.str());
-
+      MetaData new_meta(meta_[i]);
+      new_meta.addMeta(crcb_skin_parameters_[j]);
+      meta_tmp.push_back(new_meta);
       //TODO if
-      saveImage(processed_cloud, new_meta.str());
+      saveImage(input_cloud_, remaining_points, new_meta);
     }
   }
-  output_ = tmp_output;
-  meta_output_ = tmp_meta_output;
+  indices_ = indices_tmp;
+  meta_ = meta_tmp;
 
 }
 
@@ -167,52 +201,38 @@ void Segmenter::euclideanClustering()
 {
   ROS_INFO("Euclidean clustering");
 
-  std::vector<Cloud::Ptr> tmp_output;
-  std::vector<std::string> tmp_meta_output;
-  Cloud::Ptr processed_cloud;
-  for (size_t i = 0; i < output_.size(); ++i)
+  std::vector<pcl::PointIndices::Ptr> indices_tmp;
+  std::vector<MetaData> meta_tmp;
+  pcl::search::OrganizedNeighbor<PointRGB>::Ptr nn(new pcl::search::OrganizedNeighbor<PointRGB>);
+  nn->setInputCloud(input_cloud_);
+  for (size_t i = 0; i < indices_.size(); ++i)
   {
-
     for (size_t j = 0; j < euclidean_clustering_.size(); ++j)
     {
-      processed_cloud.reset(new Cloud);
-      processed_cloud = output_[i];
-      std::vector<pcl::PointIndices> cluster_indices;
-      saveImage(processed_cloud, "timber");
 
-      std::cout <<"org "<<processed_cloud->isOrganized()<<"\n";
-      pcl::search::OrganizedNeighbor<PointRGB>::Ptr nn(new pcl::search::OrganizedNeighbor<PointRGB>);
-      nn->setInputCloud(processed_cloud);
-      euclidean_clustering_[j].setIndices(helper_functions::getFiniteIndices(processed_cloud));
+      IndicesPtr remaining_points(new vector<int>(indices_[i]->indices));
+      vector<pcl::PointIndices> clusters;
+      std::cout << "indeksei: " << remaining_points->size() << "\n";
+      //TODO if setting says so
+      saveImage(input_cloud_, *remaining_points);
+
+      euclidean_clustering_[j].setIndices(remaining_points);
       euclidean_clustering_[j].setSearchMethod(nn);
 
-      euclidean_clustering_[j].setInputCloud(processed_cloud);
-      euclidean_clustering_[j].extract(cluster_indices);
-
-      pcl::ExtractIndices<PointRGB> extract;
-      extract.setKeepOrganized(true);
-      extract.setInputCloud(processed_cloud);
-
-      // Create pcl::PointIndices::Ptr, first of the indices should be largest and the object we want
-      extract.setIndices(boost::make_shared<pcl::PointIndices>(cluster_indices.at(0)));
-      processed_cloud.reset(new Cloud);
-      extract.filter(*processed_cloud);
-
-      std::ostringstream new_meta;
-      new_meta.precision(3);
-      new_meta << meta_output_[i];
-      new_meta << "_ec_tol_" << euclidean_clustering_[j].getClusterTolerance() << "_sz_"
-          << euclidean_clustering_[j].getMinClusterSize() << "_" << euclidean_clustering_[j].getMaxClusterSize();
-
-      tmp_output.push_back(processed_cloud);
-      tmp_meta_output.push_back(new_meta.str());
-
-      saveImage(processed_cloud, new_meta.str());
-
+      euclidean_clustering_[j].setInputCloud(input_cloud_);
+      euclidean_clustering_[j].extract(clusters);
+      indices_tmp.push_back(boost::make_shared<pcl::PointIndices>(clusters.at(0)));
+      MetaData new_meta(meta_[i]);
+      new_meta.addMeta("euc_cluster_tolerance", static_cast<float>(euclidean_clustering_[j].getClusterTolerance()));
+      new_meta.addMeta("euc_cluste_size", euclidean_clustering_[j].getMinClusterSize(),
+                       euclidean_clustering_[j].getMaxClusterSize());
+      meta_tmp.push_back(new_meta);
+      saveImage(input_cloud_, boost::make_shared<pcl::PointIndices>(clusters.at(0)));
     }
   }
-  output_ = tmp_output;
-  meta_output_ = tmp_meta_output;
+  indices_ = indices_tmp;
+  meta_ = meta_tmp;
+
 }
 
 void Segmenter::tableTopFiltering()
@@ -229,17 +249,17 @@ bool Segmenter::isSkin(const cv::Mat skin_model, const cv::Vec3b color)
 }
 
 //TODO make own class, inherit  filter class?
-void Segmenter::filterSkin(const cv::Mat skin_model, Cloud::Ptr &cloud)
+pcl::PointIndices::Ptr Segmenter::filterSkin(const cv::Mat skin_model, pcl::PointIndices::Ptr indices)
 {
   using namespace cv;
 
-  Mat imgBGR = helper_functions::pcTocv(cloud, "getSkinColoredPoints");
+  Mat imgBGR = helper_functions::pcTocv(input_cloud_, indices);
   Mat imgYCrCb;
-  Mat binary_mask = Mat(cloud->height, cloud->width, CV_8UC1, Scalar(0));
-  pcl::PointIndices::Ptr skin_indices(new pcl::PointIndices);
+  Mat binary_mask = Mat(input_cloud_->height, input_cloud_->width, CV_8UC1, Scalar(0));
+  vector<int> skin_indices;
 
   cvtColor(imgBGR, imgYCrCb, CV_BGR2YCrCb);
-
+  //TODO iterate only indices
   MatIterator_<Vec3b> img_it = imgYCrCb.begin<Vec3b>();
   MatIterator_<uchar> bin_it = binary_mask.begin<uchar>();
   MatIterator_<Vec3b> img_end = imgYCrCb.end<Vec3b>();
@@ -259,7 +279,7 @@ void Segmenter::filterSkin(const cv::Mat skin_model, Cloud::Ptr &cloud)
   /* namedWindow("binary_mask eroded", CV_WINDOW_AUTOSIZE);
    imshow("binary_mask eroded", binary_mask_modified);
    waitKey();*/
-  cv::dilate(binary_mask, binary_mask, element, Point(2, 2), 3); //TODO setting for iterations
+  cv::dilate(binary_mask, binary_mask, element, Point(2, 2), 4); //TODO setting for iterations
   /*  namedWindow("binary_mask dilated", CV_WINDOW_AUTOSIZE);
    imshow("binary_mask dilated", binary_mask);
    waitKey();*/
@@ -270,39 +290,16 @@ void Segmenter::filterSkin(const cv::Mat skin_model, Cloud::Ptr &cloud)
   for (; bin_it != bin_it_end; ++i, ++bin_it)
   {
     if (*bin_it == 255)
-      skin_indices->indices.push_back((i));
-
+      skin_indices.push_back((i));
   }
-
-  if (skin_indices->indices.size() > 0)
-  {
-    pcl::ExtractIndices<PointRGB> extract;
-    extract.setKeepOrganized(true);
-    extract.setNegative(true);
-    Cloud::Ptr tmp;
-    tmp.reset(new Cloud);
-    extract.setInputCloud(cloud);
-    /*  if (((int)std::count_if(indices->indices.begin(), indices->indices.end(), notZero)) == 0)
-     return input_cloud;*/
-
-    extract.setIndices(skin_indices);
-
-
-    extract.filter(*cloud);
-    skin_indices_.reset(new pcl::PointIndices);
-    //skin_indices_ = extract.getIndices();
-
-
-
-    //HelperFunctions::pcTocv(processed_cloud);
-    // points << "Skin: " << skinIndices->indices.size() << " ";
-    // points << "NonSkin: " << processed_cloud_->points.size() << " ";
-  }
-  else
-  {
-    ROS_INFO("No skin found");
-  }
-
+  vector<int> sorted_indices(indices->indices);
+  std::sort(sorted_indices.begin(), sorted_indices.end());
+  vector<int> non_skin_indices;
+  std::set_difference(sorted_indices.begin(), sorted_indices.end(), skin_indices.begin(), skin_indices.end(),
+                      std::back_inserter(non_skin_indices));
+  pcl::PointIndices::Ptr non_skin_point_indices(new pcl::PointIndices);
+  non_skin_point_indices->indices = non_skin_indices;
+  return non_skin_point_indices;
   /*
    namedWindow("binary_mask_modified", CV_WINDOW_AUTOSIZE);
    imshow("binary_mask_modified", binary_mask_modified);
@@ -395,11 +392,13 @@ void Segmenter::loadSettings()
                   cv::Size(ellipse_axis_x[i], ellipse_axis_y[i]), ellipse_angle[i], 0.0, 360.0,
                   cv::Scalar(255, 255, 255), -1);
       crcb_skin_model_.push_back(skin_model);
-      std::ostringstream skin_param;
-      skin_param.precision(3);
-      skin_param << "_crcb_ctr_" << ellipse_center_x[i] << "_" << ellipse_center_y[i] << "_ax_" << ellipse_axis_x[i]
-          << "_" << ellipse_axis_y[i] << "_ang_" << ellipse_angle[i];
-      crcb_skin_parameters_.push_back(skin_param.str());
+
+      //save meta data on settings
+      MetaData new_meta;
+      new_meta.addMeta("CrCb_center", ellipse_center_x[i], ellipse_center_y[i]);
+      new_meta.addMeta("CrCb_axis", ellipse_axis_x[i], ellipse_axis_y[i]);
+      new_meta.addMeta("CrCb_angle", ellipse_angle[i]);
+      crcb_skin_parameters_.push_back(new_meta);
     }
   }
 
@@ -426,11 +425,35 @@ void Segmenter::loadSettings()
     return;
 
 }
-
-void Segmenter::saveImage(Cloud::Ptr cloud, std::string meta_info)
+//TODO move to helpers
+void Segmenter::saveImage(Cloud::Ptr cloud, pcl::PointIndices::Ptr indices, MetaData meta_info)
 {
-  cv::Mat processed_image = helper_functions::insertText(helper_functions::pcTocv(cloud), meta_info);
-  fh_.saveImage(processed_image, meta_info);
+  cv::Mat processed_image = helper_functions::insertText(helper_functions::pcTocv(cloud, indices),
+                                                         meta_info.getMetaString());
+  fh_.saveImage(processed_image, "segmenting");
 }
+void Segmenter::saveImage(Cloud::Ptr cloud, pcl::PointIndices::Ptr indices)
+{
+  cv::Mat processed_image = helper_functions::pcTocv(cloud, indices);
+  fh_.saveImage(processed_image, "segmenting");
+}
+void Segmenter::saveImage(Cloud::Ptr cloud, MetaData meta_info)
+{
+  cv::Mat processed_image = helper_functions::insertText(helper_functions::pcTocv(cloud), meta_info.getMetaString());
+  fh_.saveImage(processed_image, "segmenting");
+}
+
+void Segmenter::saveImage(Cloud::Ptr cloud)
+{
+  cv::Mat processed_image = helper_functions::pcTocv(cloud);
+  fh_.saveImage(processed_image, "segmenting");
+}
+
+void Segmenter::saveImage(Cloud::Ptr cloud, vector<int> indices)
+{
+  cv::Mat processed_image = helper_functions::pcTocv(cloud, indices);
+  fh_.saveImage(processed_image, "segmenting");
+}
+
 } /* namespace or_training */
 

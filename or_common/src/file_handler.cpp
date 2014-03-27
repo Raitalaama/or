@@ -57,10 +57,12 @@ void FileHandler::savePointCloud(Cloud::ConstPtr cloud)
 
 void FileHandler::savePointCloud(Cloud::ConstPtr cloud, const pcl::PointIndices::ConstPtr &indices)
 {
-  Cloud::Ptr temp;
-  temp.reset(new Cloud);
-  temp = helper_functions::filterIndices(cloud, indices, true);
-  savePointCloud(temp);
+  Cloud::Ptr filtered_cloud(new Cloud);
+  pcl::ExtractIndices<PointRGB> extract;
+  extract.setInputCloud(cloud);
+  extract.setIndices(indices);
+  extract.filter(*filtered_cloud);
+  savePointCloud(filtered_cloud);
 }
 
 void FileHandler::savePointCloud(Cloud::ConstPtr cloud, std::vector<pcl::PointIndices> &indice_vector)

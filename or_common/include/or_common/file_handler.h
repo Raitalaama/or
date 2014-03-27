@@ -27,6 +27,7 @@
 
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl/filters/extract_indices.h>
 
 class FileHandler : public IOHandler
 {

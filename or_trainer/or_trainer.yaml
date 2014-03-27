@@ -3,7 +3,7 @@ png_output_dir: /home/raitalaama/or_output
 
 bag_handler:
   bag_input_dir: /media/DATA/Varasto/Japanidatat/objects_in_hand
-  process_every_th_frame: 90
+  process_every_th_frame: 450
 
 segmenter:
   perform_initial_passthrough_filtering: true
@@ -40,3 +40,18 @@ segmenter:
     plane_x_axis: [0.0028599]
     plane_y_axis: [-0.851081]
     plane_z_axis: [-0.518467]
+    
+feature_extractor:
+  use_normals_from_earlier_steps: true
+  use_uniform_keypoints: true
+  calculate_fpfh: true
+  
+  normal_estimation:
+    max_depth_change_factor: [0.01]
+    smoothing_size: [5.0]
+    estimation_method: [1] #1=covariance matrix, 2=average 3d gradient 3=average depth change
+  uniform_sampling:
+    leaf_size: [0.02 ]
+  fpfh_estimation:
+    search_radius: [0.04]
+    

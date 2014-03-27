@@ -109,6 +109,8 @@ add_library(or_common
    src/bag_handler.cpp 
    src/file_handler.cpp    
    src/helper_functions.cpp    
+   src/feature_extract.cpp
+   src/meta_data.cpp
 )
 
 ## Declare a cpp executable

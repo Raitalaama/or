@@ -7,9 +7,7 @@
 
 #include "or_common/helper_functions.h"
 
-
-
-//TODO make invariant to image size, make text
+//TODO make invariant to image size, make text wrap
 cv::Mat helper_functions::insertText(cv::Mat image, std::string line1, std::string line2, std::string line3,
                                      std::string line4, std::string line5, std::string line6)
 {
@@ -27,33 +25,12 @@ cv::Mat helper_functions::insertText(cv::Mat image, std::string line1, std::stri
   return image;
 }
 
-Cloud::Ptr helper_functions::filterIndices(const Cloud::ConstPtr &input_cloud,
-                                           const pcl::PointIndices::ConstPtr &indices, bool negative)
-{
-  pcl::ExtractIndices<pcl::PointXYZRGB> extract;
-  extract.setKeepOrganized(true);
-  Cloud::Ptr tmp;
-  tmp.reset(new Cloud);
-  extract.setInputCloud(input_cloud);
-  /*  if (((int)std::count_if(indices->indices.begin(), indices->indices.end(), notZero)) == 0)
-   return input_cloud;*/
-
-  extract.setIndices(indices);
-
-  extract.setNegative(negative);
-
-  extract.filter(*tmp);
-
-  //TODO crashes if you run this 2 times to same pointcloud with same indices to be removed
-  return tmp;
-}
-
 pcl::PointIndices::Ptr helper_functions::getFiniteIndices(Cloud::ConstPtr input_cloud)
 {
   pcl::PointIndices::Ptr finite_indices(new pcl::PointIndices());
-  for(size_t i= 0; i<input_cloud->points.size() ;++i)
+  for (size_t i = 0; i < input_cloud->points.size(); ++i)
   {
-    if(std::isfinite(input_cloud->points[i].x)) //TODO any point in checking y and z?
+    if (boost::math::isfinite(input_cloud->points[i].x)) //TODO any point in checking y and z?
     {
       finite_indices->indices.push_back(i);
     }
@@ -61,26 +38,7 @@ pcl::PointIndices::Ptr helper_functions::getFiniteIndices(Cloud::ConstPtr input_
   return finite_indices;
 }
 
-pcl::PointIndices::Ptr helper_functions::combineIndices(std::vector<pcl::PointIndices> &indice_vector)
-{
-  //TODO make this work
-  pcl::PointIndices::Ptr all_indices(new pcl::PointIndices(indice_vector[0]));
-  if (indice_vector.size() == 0)
-  {
-    pcl::PointIndices::Ptr all_indices(new pcl::PointIndices);
-    ROS_INFO("Empty indices vector returned by combineIndices");
-    return all_indices;
-  }
-  for (size_t i = 0; i < indice_vector.size(); ++i)
-  {
-    for (size_t j = 0; j < indice_vector.at(i).indices.size(); j++)
-    {
-      all_indices->indices.insert(all_indices->indices.end(), indice_vector.at(i).indices.begin(),
-                                  indice_vector.at(i).indices.end());
-    }
-  }
-  return all_indices;
-}
+
 
 cv::Mat helper_functions::pcTocv(Cloud::Ptr &input_cloud, std::string window_name)
 {
@@ -152,6 +110,40 @@ cv::Mat helper_functions::pcTocv(Cloud::Ptr &input_cloud)
   return image;
 }
 
+cv::Mat helper_functions::pcTocv(Cloud::Ptr &input_cloud, pcl::PointIndices::Ptr indices)
+{
+  return pcTocv(input_cloud,indices->indices);
+}
+
+cv::Mat helper_functions::pcTocv(Cloud::Ptr &input_cloud, IndicesPtr indices)
+{
+  return pcTocv(input_cloud,*indices);
+}
+
+cv::Mat helper_functions::pcTocv(Cloud::Ptr &input_cloud, std::vector<int> indices)
+{
+  if (input_cloud->height == 1)
+    ROS_INFO("trying to convert non organized point cloud");
+  cv::Mat image = cv::Mat(cv::Size(input_cloud->width, input_cloud->height), CV_8UC3, cv::Scalar(0, 0, 255));
+
+  std::vector<int>::iterator it = indices.begin();
+  std::vector<int>::iterator end = indices.end();
+
+  for (; it != end; ++it)
+  {
+    if ((boost::math::isfinite)(input_cloud->points[*it].z) && (boost::math::isfinite)(input_cloud->points[*it].y)
+        && (boost::math::isfinite)(input_cloud->points[*it].x)) //TODO any need to check more than one?
+    {
+      image.at<cv::Vec3b>(*it).val[0] = input_cloud->points[*it].b;
+      image.at<cv::Vec3b>(*it).val[1] = input_cloud->points[*it].g;
+      image.at<cv::Vec3b>(*it).val[2] = input_cloud->points[*it].r;
+    }
+  }
+  return image;
+}
+
+
+
 cv::Mat helper_functions::highlightPoints(cv::Mat base_image, boost::shared_ptr<std::vector<int> > highlight_points)
 {
   const int WIDTH = base_image.cols;
@@ -185,9 +177,11 @@ std::vector<int> helper_functions::getIntSettings(std::string setting_name)
   std::vector<int> data;
 
   XmlRpc::XmlRpcValue xml_data;
+  std::string key;
 
-  if (ros::param::get(setting_name, xml_data))
+  if (ros::param::search(setting_name, key))
   {
+    ros::param::get(key, xml_data);
     ROS_ASSERT(xml_data.getType() == XmlRpc::XmlRpcValue::TypeArray);
     for (int32_t i = 0; i < xml_data.size(); ++i)
     {
@@ -202,9 +196,11 @@ std::vector<float> helper_functions::getFloatSettings(std::string setting_name)
 {
   std::vector<float> data;
   XmlRpc::XmlRpcValue xml_data;
+  std::string key;
 
-  if (ros::param::get(setting_name, xml_data))
+  if (ros::param::search(setting_name, key))
   {
+    ros::param::get(key, xml_data);
     ROS_ASSERT(xml_data.getType() == XmlRpc::XmlRpcValue::TypeArray);
     for (int32_t i = 0; i < xml_data.size(); ++i)
     {
@@ -225,7 +221,6 @@ std::string helper_functions::getStringSetting(std::string setting_name)
   fs.release();
   return setting;
 }
-
 
 std::vector<std::string> helper_functions::getStringVectorSetting(std::string setting_name)
 {

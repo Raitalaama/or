@@ -11,6 +11,7 @@
 #include <pcl/point_types.h>
 #include <pcl/point_cloud.h>
 #include <vector>
+#include "or_common/meta_data.h"
 
 typedef pcl::PointXYZRGB PointRGB;
 typedef pcl::PointCloud<PointRGB> Cloud;
